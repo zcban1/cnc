@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import re
 
+precedente_comando_g = None  # Inizializza la variabile per il comando G precedente
 comandi_cnc = {
     "G00": "Movimento rapido",
     "G0": "Movimento rapido",
@@ -19,16 +20,27 @@ comandi_cnc = {
     "M03": "Accendi mandrino in senso orario",
     "M04": "Accendi mandrino in senso antiorario",
     "M05": "Spegni mandrino",
-    "M28": "apertura serrapinza",
-    "M29": "chiusura serrapinza",
-    "T01": "Cambia utensile a posizione 1",
-    "T02": "Cambia utensile a posizione 2",
+    "M28": "Apertura Serrapinza/Autocentrante",
+    "M29": "Chiusura Serrapinza/Autocentrante",
+    "T101": "Cambia utensile a posizione 1",
+    "T800": "Cambia utensile 8 a posizione 0",
+    "T202": "Cambia utensile a posizione 2",
+
     "S": "Imposta la velocità del mandrino",
+    "F": "Imposta la velocità avanzamento torretta in lavorazione",
     "I": "Coordinate X del centro della circonferenza",
     "J": "Coordinate Y del centro della circonferenza",
     "X": "Coordinate X",
     "Y": "Coordinate Y",
     "Z": "Coordinate Z",
+    "A": "Calcola Angolo",
+    "M98": "Chiamata di sotto-programma",
+    "M99": "Fine del sotto-programma",
+    "M07": "Accendi acqua",
+    "M09": "Spegni acqua",
+    "M41": "Apertura porte",
+    "M42": "Chiusura porte",
+    "N": "Numero Blocco Programma",
 }
 
 def converti_velocita_in_rpm(velocita):
@@ -60,21 +72,56 @@ def analizza_file_cnc(nome_file):
                 if comando == "S" and parametri:
                     velocita = parametri[0]
                     significato += f" - Velocità: {velocita} RPM"
+
+                # Handle tool change commands (e.g., N16 T116)
+                if riga.startswith("N") and "T" in riga:
+                    # Extract the tool change command components
+                    n_index = riga.find("N") + 1
+                    t_index = riga.find("T")
+                    numero_programma = int(riga[n_index:t_index])
+                    
+                    # Extract the entire tool number after "T"
+                    tool_number_match = re.search(r'T(\d+)', riga)
+                    if tool_number_match:
+                        tool_number_full = tool_number_match.group(1)
+                        numero_torretta = int(tool_number_full[:-2])
+                        numero_utensile = int(tool_number_full[-2:])
+                        significato += f" - Cambio utensile a torretta {numero_torretta} posizione {numero_utensile} (Programma N{numero_programma})"
+                    else:
+                        significato += f" - Errore nell'estrazione del numero utensile"
+
+                # Update the tool position for tool change commands
+                if riga.startswith("N"):
+                    precedente_comando_g = None  # Reset the previous G-code command for tool change
+
                 elif comando in ["G04", "G4"] and parametri:
                     # Extract the numerical value after the X character
                     pause_duration_match = re.search(r'X(-?\d+(\.\d+)?)', ' '.join(parametri))
                     if pause_duration_match:
                         pause_duration = float(pause_duration_match.group(1))
                         significato += f" - Pausa di {pause_duration} secondi"
-                
-                elif comando in ["G96"] and parametri:
+
+                elif comando in ["G96", "G97"] and parametri:
+                    # G-codes for spindle speed control
                     velocita = converti_velocita_in_rpm(parametri[0].lstrip("S"))
                     significato += f" - Velocità del mandrino: {velocita} RPM"
+
+                    # Check for spindle direction in the same line
+                    spindle_direction = None
+                    for param in parametri:
+                        if param.startswith("M03") or param.startswith("M3"):
+                            spindle_direction = "Orario"
+                        elif param.startswith("M04") or param.startswith("M4"):
+                            spindle_direction = "Antiorario"
+                    if spindle_direction:
+                        significato += f" - Accendi mandrino in senso {spindle_direction}"
+
                 elif comando in ["G02", "G03","G2", "G3"] and len(parametri) >= 3:
                     i = parametri[-2].lstrip("I")
                     j = parametri[-1].lstrip("J")
                     centro_x, centro_y = calcola_centro(posizione_attuale, i, j)
                     significato += f" - Centro: (I={i}, J={j}) - Posizione del centro: (X={centro_x}, Y={centro_y})"
+
                 elif comando in ["G00", "G01", "G02", "G03","G0", "G1", "G2", "G3"] and parametri:
                     param_dict = {p[0]: p[1:] for p in parametri}
                     posizione_attuale.update({k: float(v) for k, v in param_dict.items()})
@@ -89,6 +136,13 @@ def analizza_file_cnc(nome_file):
                         posizioni_finali_movimenti_rapidi.append((x, y, z))
                     else:
                         posizioni_finali_lavorazione.append((x, y, z))
+
+                    # Se il comando corrente inizia con G, aggiorna la variabile del comando G precedente
+                    if comando.startswith("G"):
+                        precedente_comando_g = comando
+
+
+
 
                 print(f'Riga {numero_riga}: {riga.strip()} - {significato}')
                 #print("Posizioni movimenti rapidi:", posizioni_finali_movimenti_rapidi)
@@ -163,5 +217,6 @@ if __name__ == "__main__":
     print("\nCommenti:")
     for commento in commenti:
         print(commento)
-    #disegna_tornio_percorso(posizioni_percorso)
-    disegna_tornio_pezzo(posizioni_finali_movimenti_rapidi,posizioni_finali_lavorazione)
+    disegna_tornio_percorso(posizioni_percorso)
+    #disegna_tornio_pezzo(posizioni_finali_movimenti_rapidi,posizioni_finali_lavorazione)
+
