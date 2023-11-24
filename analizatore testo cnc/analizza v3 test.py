@@ -143,7 +143,14 @@ def analizza_file_cnc(nome_file):
                     y = posizione_attuale.get("Y", "N/D")
                     z = posizione_attuale.get("Z", "N/D")
     
-                    posizioni_percorso.append((posizione_attuale.get("X", 0), posizione_attuale.get("Y", 0), posizione_attuale.get("Z", 0)))
+                    #posizioni_percorso.append((posizione_attuale.get("X", 0), posizione_attuale.get("Y", 0), posizione_attuale.get("Z", 0)))
+                    # Check if the command has an angle (A)
+                    if "A" in param_dict:
+                        angolo_attuale = float(param_dict["A"])
+                        calcola_coordinate_con_angolo(posizione_attuale, angolo_attuale)
+                        significato += f" - Posizione: (X={x}, Y={y}, Z={z}) - Angolo: {angolo_attuale} gradi (Coordinate aggiornate)"
+                    else:
+                        significato += f" - Posizione: (X={x}, Y={y}, Z={z})"
 
                     if comando in ["G00", "G0"]:
                         posizioni_finali_movimenti_rapidi.append((x, y, z))
