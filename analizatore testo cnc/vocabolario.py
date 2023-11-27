@@ -10,6 +10,9 @@ comandi_cnc = {
     "G3": "Interpolazione circolare antioraria",
     "G04": "Pausa programma",
     "G4": "Pausa programma",
+    "G28": "Ritorna al punto d’origine degli assi",
+    "G90" :"Usa coordinate assolute",
+    "G91": "Usa coordinate relative",
     "G96": "Velocità costante del mandrino",
     "G97": "Velocità costante del mandrino con RPM",
     "G98": "Avanzamento barra caricatore millimetri/minuto",
@@ -55,3 +58,4 @@ comandi_cnc = {
     "R":"Raggio",
     "N": "Numero Blocco Programma",
 }
+
