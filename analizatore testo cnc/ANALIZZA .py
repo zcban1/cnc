@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import re
 import math
+from math import sin
 from disegna_pezzo import plot_cnc_profile_2d,plot_cnc_profile
 from vocabolario import comandi_cnc
 from converter import  aggiungi_comando_g_spazio,modifica_file_cnc
@@ -17,21 +18,22 @@ def converti_velocita_in_rpm(velocita):
         return "N/D"
 
 def calcola_coordinate_con_angolo(posizione_attuale, angolo):
+  # Calcola nuove coordinate basate sull'angolo
+  if 'X' in posizione_attuale and 'Z' in posizione_attuale:
+    x_originale = posizione_attuale['X']
+    z_originale = posizione_attuale['Z']
+    y_originale = posizione_attuale['Y']
+     
+    # Converti l'angolo in radianti
+    angolo_rad = math.radians(angolo)
+     
     # Calcola nuove coordinate basate sull'angolo
-    if 'X' in posizione_attuale and 'Y' in posizione_attuale:
-        x_originale = posizione_attuale['X']
-        y_originale = posizione_attuale['Y']
-        
-        # Converti l'angolo in radianti
-        angolo_rad = math.radians(angolo)
-        
-        # Calcola nuove coordinate basate sull'angolo
-        x_nuovo = x_originale * math.cos(angolo_rad) - y_originale * math.sin(angolo_rad)
-        y_nuovo = x_originale * math.sin(angolo_rad) + y_originale * math.cos(angolo_rad)
-        
-        # Aggiorna le coordinate nella posizione attuale
-        posizione_attuale['X'] = x_nuovo
-        posizione_attuale['Y'] = y_nuovo
+    x_nuovo = x_originale * math.cos(angolo_rad) - y_originale * math.sin(angolo_rad)
+    z_nuovo = z_originale * math.sin(angolo_rad) + z_originale * math.cos(angolo_rad)
+     
+    # Aggiorna le coordinate nella posizione attuale
+    posizione_attuale['X'] = x_nuovo
+    posizione_attuale['Z'] = z_nuovo
 
 def calcola_coordinate_con_raggio_lineare(posizione_attuale, raggio, z_destinazione):
     # Estrai le coordinate correnti
@@ -51,7 +53,7 @@ def calcola_coordinate_con_raggio_lineare(posizione_attuale, raggio, z_destinazi
 
 def calcola_centro(posizione_attuale, i, j):
     centro_x = posizione_attuale['X'] + float(i)
-    centro_y = posizione_attuale['Y'] + float(j)
+    centro_z = posizione_attuale['Z'] + float(j)
     return centro_x, centro_y
 
 def analizza_file_cnc(nome_file):
@@ -229,13 +231,12 @@ def analizza_file_cnc(nome_file):
 if __name__ == "__main__":
     input_filename = 'CNC.txt'
     output_filename = 'CNC_modificato.txt'
-    file_modificato = output_filename
     modifica_file_cnc(input_filename, output_filename)
-    aggiungi_comando_g_spazio(file_modificato)
+    aggiungi_comando_g_spazio(output_filename)
     nome_file_cnc = output_filename
-    posizioni_percorso,  posizioni_finali_movimenti_rapidi, posizioni_finali_lavorazione, commenti  = analizza_file_cnc(nome_file_cnc)
-    # Stampa i commenti nello stesso numero di righe del file
+    posizioni_percorso, posizioni_finali_movimenti_rapidi, posizioni_finali_lavorazione, commenti = analizza_file_cnc(nome_file_cnc)
     print("\nCommenti:")
     for commento in commenti:
         print(commento)
-    plot_cnc_profile_2d(posizioni_percorso, posizioni_finali_movimenti_rapidi, posizioni_finali_lavorazione, commenti)
+    plot_cnc_profile_2d(posizioni_finali_lavorazione)
+
