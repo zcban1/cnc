@@ -4,7 +4,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import re
 import math
 from math import sin
-from disegna_pezzo import plot_cnc_profile_2d,plot_cnc_profile
+from disegna_pezzo import plot_cnc_profile_2d,plot_cnc_profile,plot_cnc_profile_2d4
 from vocabolario import comandi_cnc
 from converter import  aggiungi_comando_g_spazio,modifica_file_cnc
 
@@ -18,22 +18,23 @@ def converti_velocita_in_rpm(velocita):
         return "N/D"
 
 def calcola_coordinate_con_angolo(posizione_attuale, angolo):
-  # Calcola nuove coordinate basate sull'angolo
-  if 'X' in posizione_attuale and 'Z' in posizione_attuale:
-    x_originale = posizione_attuale['X']
-    z_originale = posizione_attuale['Z']
-    y_originale = posizione_attuale['Y']
-     
-    # Converti l'angolo in radianti
-    angolo_rad = math.radians(angolo)
-     
     # Calcola nuove coordinate basate sull'angolo
-    x_nuovo = x_originale * math.cos(angolo_rad) - y_originale * math.sin(angolo_rad)
-    z_nuovo = z_originale * math.sin(angolo_rad) + z_originale * math.cos(angolo_rad)
-     
-    # Aggiorna le coordinate nella posizione attuale
-    posizione_attuale['X'] = x_nuovo
-    posizione_attuale['Z'] = z_nuovo
+    if 'X' in posizione_attuale and 'Z' in posizione_attuale:
+        x_originale = posizione_attuale['X']
+        z_originale = posizione_attuale['Z']
+        y_originale = posizione_attuale['Y']
+
+        # Converti l'angolo in radianti (con segno inverso per senso antiorario)
+        angolo_rad = math.radians(angolo)
+
+        # Calcola nuove coordinate basate sull'angolo
+        x_nuovo = x_originale * math.cos(angolo_rad) + z_originale * math.sin(angolo_rad)
+        z_nuovo = -x_originale * math.sin(angolo_rad) + z_originale * math.cos(angolo_rad)
+
+        # Aggiorna le coordinate nella posizione attuale
+        posizione_attuale['X'] = x_nuovo
+        posizione_attuale['Z'] = z_nuovo
+
 
 def calcola_coordinate_con_raggio_lineare(posizione_attuale, raggio, z_destinazione):
     # Estrai le coordinate correnti
@@ -153,8 +154,10 @@ def analizza_file_cnc(nome_file):
 
                     if comando in ["G00", "G0"]:
                         posizioni_finali_movimenti_rapidi.append((x, y, z))
+                        posizioni_percorso.append((x, y, z))
                     else:
                         posizioni_finali_lavorazione.append((x, y, z))
+                        posizioni_percorso.append((x, y, z))
 
                     # Se il comando corrente inizia con G, aggiorna la variabile del comando G precedente
                     if comando.startswith("G"):
@@ -193,6 +196,7 @@ def analizza_file_cnc(nome_file):
 
                         significato += f" - Feed Rate (velocità di avanzamento in lavorazione): {feed_rate}, Posizione: (X={x_value}, Y={y_value}, Z={z_value})"
                         posizioni_finali_lavorazione.append((x_value, y_value, z_value))
+                        posizioni_percorso.append((x, y, z))
 
                     elif any(cmd in riga for cmd in ["G00", "G0"]):
                         # Use the previous values if Z, X, or Y parameters are not present
@@ -205,6 +209,7 @@ def analizza_file_cnc(nome_file):
                         z_value = float(z_match.group(1)) if z_match else posizione_attuale.get("Z", "N/D")
                         significato += f" - Velocità di avanzamento controllata da operatore tramite tasti, Posizione: (X={x_value}, Y={y_value}, Z={z_value})"
                         posizioni_finali_movimenti_rapidi.append((x_value, y_value, z_value))
+                        posizioni_percorso.append((x, y, z))
 
                     # Check for M5 in the line
                     if "M5" in riga:
@@ -238,5 +243,12 @@ if __name__ == "__main__":
     print("\nCommenti:")
     for commento in commenti:
         print(commento)
+    print("plot_cnc_profile_2d(posizioni_finali_lavorazione)")
     plot_cnc_profile_2d(posizioni_finali_lavorazione)
+    #plot_cnc_profile_2d3(posizioni_percorso)
+    plot_cnc_profile_2d4(posizioni_percorso,posizioni_finali_lavorazione,posizioni_finali_movimenti_rapidi)
+    
+
+
+
 
