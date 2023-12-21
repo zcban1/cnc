@@ -1,5 +1,5 @@
 comandi_cnc = {
-    # G-codes
+    # G-codes #torni
     "G00": "Movimento rapido",
     "G0": "Movimento rapido",
     "G01": "Movimento lineare",
